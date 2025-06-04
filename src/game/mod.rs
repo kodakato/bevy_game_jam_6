@@ -15,9 +15,9 @@ pub(super) fn plugin(app: &mut App) {
         level::plugin,
         cursor::plugin,
         physics::plugin,
-        // explosion::plugin,
-        // enemy::plugin,
-        // food::plugin,
-        // spawner::plugin,
+        explosion::plugin,
+        enemy::plugin,
+        food::plugin,
+        spawner::plugin,
     ));
 }

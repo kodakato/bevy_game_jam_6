@@ -9,7 +9,7 @@ use crate::{AppSystems, PausableSystems, Pause};
 
 pub(super) fn plugin(app: &mut App) {
     app.add_plugins(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0));
-    #[cfg(debug)]
+    #[cfg(debug_assertions)]
     app.add_plugins(RapierDebugRenderPlugin::default());
     app.add_systems(Startup, setup_rapier);
 }

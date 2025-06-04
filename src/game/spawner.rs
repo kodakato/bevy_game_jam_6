@@ -4,7 +4,7 @@ use bevy::{
 };
 use bevy_rapier2d::prelude::{Collider, RigidBody};
 
-use crate::{AppSystems, PausableSystems, asset_tracking::LoadResource};
+use crate::{AppSystems, PausableSystems, asset_tracking::LoadResource, screens::Screen};
 
 use super::enemy::{EnemyAssets, enemy};
 
@@ -16,7 +16,8 @@ pub(super) fn plugin(app: &mut App) {
         Update,
         spawn_enemies
             .in_set(AppSystems::Update)
-            .in_set(PausableSystems),
+            .in_set(PausableSystems)
+            .run_if(in_state(Screen::Gameplay)),
     );
 }
 

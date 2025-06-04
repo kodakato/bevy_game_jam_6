@@ -4,9 +4,15 @@ use bevy::{
     math::NormedVectorSpace,
     prelude::*,
 };
-use bevy_rapier2d::prelude::{Collider, LockedAxes, RigidBody, Velocity};
+use bevy_rapier2d::{
+    prelude::{
+        AdditionalMassProperties, Collider, ColliderMassProperties, Damping, LockedAxes,
+        MassProperties, RigidBody, Velocity,
+    },
+    rapier::prelude::ColliderMassProps,
+};
 
-use crate::{AppSystems, PausableSystems, asset_tracking::LoadResource};
+use crate::{AppSystems, PausableSystems, asset_tracking::LoadResource, screens::Screen};
 
 use super::{
     explosion::{EXPLOSION_RADIUS, Explosion, ExplosionAssets, explosion},
@@ -20,9 +26,17 @@ pub(super) fn plugin(app: &mut App) {
 
     app.add_systems(
         Update,
-        (run_to_player, run_to_food, eat, start_explode, explode)
+        (
+            run_to_player,
+            run_to_food,
+            eat,
+            start_explode,
+            explode,
+            start_explode_near_player,
+        )
             .in_set(AppSystems::Update)
-            .in_set(PausableSystems),
+            .in_set(PausableSystems)
+            .run_if(in_state(Screen::Gameplay)),
     );
 }
 
@@ -101,6 +115,14 @@ pub fn enemy(
         LockedAxes::ROTATION_LOCKED,
         Collider::ball(10.0),
         Velocity::default(),
+        Damping {
+            linear_damping: 0.9,
+            ..default()
+        },
+        ColliderMassProperties::MassProperties(MassProperties {
+            mass: 10.0,
+            ..default()
+        }),
         Sprite {
             image: enemy_assets.enemy.clone(),
             texture_atlas: Some(TextureAtlas {
@@ -118,7 +140,10 @@ pub const ENEMY_ACCELERATION: f32 = 500.0;
 pub fn run_to_player(
     time: Res<Time>,
     player_query: Query<&Transform, With<Player>>,
-    mut enemy_query: Query<(&Transform, &mut Velocity), (With<Enemy>, With<Hunting>)>,
+    mut enemy_query: Query<
+        (&Transform, &mut Velocity),
+        (With<Enemy>, With<Hunting>, Without<Exploding>),
+    >,
 ) {
     let Ok(player_transform) = player_query.single() else {
         return;
@@ -220,10 +245,34 @@ pub fn eat(
     }
 }
 
-pub const START_EXPLODING_DISTANCE: f32 = 20.0;
+pub const START_EXPLODING_DISTANCE: f32 = 40.0;
 
 pub fn start_explode(
     mut enemy_query: Query<(&Transform, Entity), (With<Enemy>, Without<Exploding>)>,
+    explosion_query: Query<&Transform, With<Explosion>>,
+    player_query: Query<&Transform, With<Player>>,
+    mut commands: Commands,
+) {
+    let Ok(player_transform) = player_query.single() else {
+        return;
+    };
+
+    for (enemy_transform, enemy_entity) in enemy_query {
+        // Check if near explosion
+        for explosion_transform in explosion_query {
+            if explosion_transform
+                .translation
+                .distance(enemy_transform.translation)
+                < EXPLOSION_RADIUS
+            {
+                commands.entity(enemy_entity).insert(Exploding::default());
+            }
+        }
+    }
+}
+
+pub fn start_explode_near_player(
+    mut enemy_query: Query<(&Transform, Entity), (With<Enemy>, With<Hunting>, Without<Exploding>)>,
     explosion_query: Query<&Transform, With<Explosion>>,
     player_query: Query<&Transform, With<Player>>,
     mut commands: Commands,
@@ -241,17 +290,6 @@ pub fn start_explode(
         {
             commands.entity(enemy_entity).insert(Exploding::default());
             continue;
-        }
-
-        // Check if near explosion
-        for explosion_transform in explosion_query {
-            if explosion_transform
-                .translation
-                .distance(enemy_transform.translation)
-                < EXPLOSION_RADIUS
-            {
-                commands.entity(enemy_entity).insert(Exploding::default());
-            }
         }
     }
 }

@@ -2,8 +2,9 @@ use bevy::{
     image::{ImageLoaderSettings, ImageSampler},
     prelude::*,
 };
+use bevy_rapier2d::prelude::Collider;
 
-use crate::{AppSystems, PausableSystems, asset_tracking::LoadResource};
+use crate::{AppSystems, PausableSystems, asset_tracking::LoadResource, screens::Screen};
 
 pub(super) fn plugin(app: &mut App) {
     app.register_type::<ExplosionAssets>();
@@ -13,7 +14,8 @@ pub(super) fn plugin(app: &mut App) {
         Update,
         despawn_explosion
             .in_set(AppSystems::Update)
-            .in_set(PausableSystems),
+            .in_set(PausableSystems)
+            .run_if(in_state(Screen::Gameplay)),
     );
 }
 
@@ -43,7 +45,7 @@ impl FromWorld for ExplosionAssets {
         let assets = world.resource::<AssetServer>();
         Self {
             explosion: assets.load_with_settings(
-                "images/ducky.png",
+                "images/explosion.png",
                 |settings: &mut ImageLoaderSettings| {
                     // Use `nearest` image sampling to preserve pixel art style.
                     settings.sampler = ImageSampler::nearest();
@@ -77,6 +79,8 @@ pub fn explosion(
             }),
             ..default()
         },
+        Collider::ball(EXPLOSION_RADIUS),
+        transform.clone(),
     )
 }
 
