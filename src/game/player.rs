@@ -72,7 +72,7 @@ pub fn player(
         Player,
         Transform::from_xyz(-50.0, 0.0, 0.0),
         RigidBody::KinematicVelocityBased,
-        Collider::ball(1.0),
+        Collider::ball(20.0),
         Velocity::default(),
         Sprite {
             image: player_assets.player.clone(),
