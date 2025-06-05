@@ -7,7 +7,7 @@ use rand::{Rng, thread_rng};
 
 use crate::{AppSystems, PausableSystems, asset_tracking::LoadResource, screens::Screen};
 
-use super::{enemy::eat, level::Level};
+use super::{enemy::eat, level::Level, spawner::SpawnEvent};
 
 pub(super) fn plugin(app: &mut App) {
     app.register_type::<FoodAssets>();
@@ -100,13 +100,7 @@ pub fn despawn_eaten_food(mut commands: Commands, food_query: Query<(Entity, &Fo
 
 pub const MAX_FOOD: usize = 10;
 
-pub fn spawn_food(
-    mut commands: Commands,
-    level_query: Query<Entity, With<Level>>,
-    food_query: Query<&Food>,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-    food_assets: Res<FoodAssets>,
-) {
+pub fn spawn_food(food_query: Query<&Food>, mut spawn_ew: EventWriter<SpawnEvent>) {
     let amount = food_query.iter().count();
     if amount >= MAX_FOOD {
         return;
@@ -117,7 +111,7 @@ pub fn spawn_food(
     let y = rng.gen_range(-500.0..500.0);
     let transform = Transform::from_xyz(x, y, 0.0);
 
-    if let Ok(level) = level_query.single() {
-        commands.spawn(food(transform, &mut texture_atlas_layouts, &food_assets));
-    };
+    spawn_ew.write(SpawnEvent::Food {
+        position: transform,
+    });
 }

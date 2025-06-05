@@ -18,6 +18,7 @@ use super::{
     explosion::{EXPLOSION_RADIUS, Explosion, ExplosionAssets, explosion},
     food::Food,
     player::Player,
+    spawner::SpawnEvent,
 };
 
 pub(super) fn plugin(app: &mut App) {
@@ -97,7 +98,7 @@ impl Default for Exploding {
 }
 
 pub fn enemy(
-    max_speed: f32,
+    transform: Transform,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     enemy_assets: &EnemyAssets,
 ) -> impl Bundle {
@@ -131,6 +132,7 @@ pub fn enemy(
             }),
             ..default()
         },
+        transform,
     )
 }
 
@@ -272,8 +274,7 @@ pub fn start_explode(
 }
 
 pub fn start_explode_near_player(
-    mut enemy_query: Query<(&Transform, Entity), (With<Enemy>, With<Hunting>, Without<Exploding>)>,
-    explosion_query: Query<&Transform, With<Explosion>>,
+    enemy_query: Query<(&Transform, Entity), (With<Enemy>, With<Hunting>, Without<Exploding>)>,
     player_query: Query<&Transform, With<Player>>,
     mut commands: Commands,
 ) {
@@ -295,10 +296,9 @@ pub fn start_explode_near_player(
 }
 
 pub fn explode(
-    mut enemy_query: Query<(&Transform, Entity, &mut Exploding), With<Enemy>>,
+    enemy_query: Query<(&Transform, Entity, &mut Exploding), With<Enemy>>,
     mut commands: Commands,
-    explosion_assets: Res<ExplosionAssets>,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    mut spawn_ew: EventWriter<SpawnEvent>,
     time: Res<Time>,
 ) {
     for (enemy_transform, enemy_entity, mut exploding) in enemy_query {
@@ -306,11 +306,9 @@ pub fn explode(
 
         if exploding.0.finished() {
             commands.entity(enemy_entity).despawn();
-            commands.spawn(explosion(
-                enemy_transform,
-                &explosion_assets,
-                &mut texture_atlas_layouts,
-            ));
+            spawn_ew.write(SpawnEvent::Enemy {
+                position: enemy_transform.clone(),
+            });
         }
     }
 }

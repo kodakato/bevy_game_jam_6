@@ -4,9 +4,15 @@ use bevy::{
 };
 use rand::{Rng, thread_rng};
 
-use crate::{asset_tracking::LoadResource, audio::music, game::spawner::spawner, screens::Screen};
+use crate::{
+    asset_tracking::LoadResource,
+    audio::music,
+    game::{cursor::cursor, spawner::spawner},
+    screens::Screen,
+};
 
 use super::{
+    cursor::CursorAssets,
     enemy::{EnemyAssets, enemy},
     food::{FoodAssets, food},
     player::{PlayerAssets, player},
@@ -54,6 +60,7 @@ pub fn spawn_level(
     player_assets: Res<PlayerAssets>,
     enemy_assets: Res<EnemyAssets>,
     spawner_assets: Res<SpawnerAssets>,
+    cursor_assets: Res<CursorAssets>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
     info!("Spawning Level");
@@ -69,12 +76,7 @@ pub fn spawn_level(
                 Name::new("Gameplay Music"),
                 music(level_assets.music.clone())
             ),
-            enemy(400.0, &mut texture_atlas_layouts, &enemy_assets), //structures(Transform::from_xyz(0.0, 0.0, 0.0), &level_assets),
-            spawner(
-                Transform::from_xyz(0.0, 0.0, 0.0),
-                &mut texture_atlas_layouts,
-                &spawner_assets
-            ),
+            cursor(&cursor_assets),
         ],
     ));
 }

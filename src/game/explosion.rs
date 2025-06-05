@@ -62,7 +62,7 @@ impl FromWorld for ExplosionAssets {
 }
 
 pub fn explosion(
-    transform: &Transform,
+    transform: Transform,
     explosion_assets: &ExplosionAssets,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
 ) -> impl Bundle {
@@ -80,12 +80,12 @@ pub fn explosion(
             ..default()
         },
         Collider::ball(EXPLOSION_RADIUS),
-        transform.clone(),
+        transform,
     )
 }
 
 pub fn despawn_explosion(
-    mut explosion_query: Query<(&mut Explosion, Entity)>,
+    explosion_query: Query<(&mut Explosion, Entity)>,
     time: Res<Time>,
     mut commands: Commands,
 ) {

@@ -6,15 +6,21 @@ use bevy_rapier2d::prelude::{Collider, RigidBody};
 
 use crate::{AppSystems, PausableSystems, asset_tracking::LoadResource, screens::Screen};
 
-use super::enemy::{EnemyAssets, enemy};
+use super::{
+    enemy::{EnemyAssets, enemy},
+    explosion::{ExplosionAssets, explosion},
+    food::{FoodAssets, food},
+};
 
 pub(super) fn plugin(app: &mut App) {
     app.register_type::<SpawnerAssets>();
     app.load_resource::<SpawnerAssets>();
 
+    app.add_event::<SpawnEvent>();
+
     app.add_systems(
         Update,
-        spawn_enemies
+        spawn_event_handler
             .in_set(AppSystems::Update)
             .in_set(PausableSystems)
             .run_if(in_state(Screen::Gameplay)),
@@ -87,19 +93,36 @@ pub fn spawner(
     )
 }
 
-pub fn spawn_enemies(
-    spawner_query: Query<&mut Spawner>,
-    time: Res<Time>,
+#[derive(Event)]
+pub enum SpawnEvent {
+    Enemy { position: Transform },
+    Food { position: Transform },
+    Explosion { position: Transform },
+}
+
+pub fn spawn_event_handler(
     mut commands: Commands,
+    mut event_reader: EventReader<SpawnEvent>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     enemy_assets: Res<EnemyAssets>,
+    food_assets: Res<FoodAssets>,
+    explosion_assets: Res<ExplosionAssets>,
 ) {
-    for (mut spawner) in spawner_query {
-        spawner.0.tick(time.delta());
-        if !spawner.0.finished() {
-            return;
+    for event in event_reader.read() {
+        match *event {
+            SpawnEvent::Enemy { position } => {
+                commands.spawn(enemy(position, &mut texture_atlas_layouts, &enemy_assets));
+            }
+            SpawnEvent::Food { position } => {
+                commands.spawn(food(position, &mut texture_atlas_layouts, &food_assets));
+            }
+            SpawnEvent::Explosion { position } => {
+                commands.spawn(explosion(
+                    position,
+                    &explosion_assets,
+                    &mut texture_atlas_layouts,
+                ));
+            }
         }
-        // Spawn
-        commands.spawn(enemy(10.0, &mut texture_atlas_layouts, &enemy_assets));
     }
 }
