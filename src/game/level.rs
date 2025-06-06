@@ -58,8 +58,7 @@ pub fn spawn_level(
     mut commands: Commands,
     level_assets: Res<LevelAssets>,
     player_assets: Res<PlayerAssets>,
-    enemy_assets: Res<EnemyAssets>,
-    spawner_assets: Res<SpawnerAssets>,
+
     cursor_assets: Res<CursorAssets>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {

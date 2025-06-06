@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+mod camera;
 mod cursor;
 mod enemy;
 mod explosion;
@@ -11,6 +12,7 @@ mod spawner;
 
 pub(super) fn plugin(app: &mut App) {
     app.add_plugins((
+        camera::plugin,
         player::plugin,
         level::plugin,
         cursor::plugin,

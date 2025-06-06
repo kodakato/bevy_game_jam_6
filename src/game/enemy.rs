@@ -6,8 +6,8 @@ use bevy::{
 };
 use bevy_rapier2d::{
     prelude::{
-        AdditionalMassProperties, Collider, ColliderMassProperties, Damping, LockedAxes,
-        MassProperties, RigidBody, Velocity,
+        AdditionalMassProperties, Collider, ColliderMassProperties, Damping, ExternalForce,
+        ExternalImpulse, LockedAxes, MassProperties, RigidBody, Velocity,
     },
     rapier::prelude::ColliderMassProps,
 };
@@ -46,8 +46,6 @@ pub(super) fn plugin(app: &mut App) {
 pub struct EnemyAssets {
     #[dependency]
     enemy: Handle<Image>,
-    #[dependency]
-    pub steps: Vec<Handle<AudioSource>>,
 }
 
 impl FromWorld for EnemyAssets {
@@ -61,12 +59,6 @@ impl FromWorld for EnemyAssets {
                     settings.sampler = ImageSampler::nearest();
                 },
             ),
-            steps: vec![
-                assets.load("audio/sound_effects/step1.ogg"),
-                assets.load("audio/sound_effects/step2.ogg"),
-                assets.load("audio/sound_effects/step3.ogg"),
-                assets.load("audio/sound_effects/step4.ogg"),
-            ],
         }
     }
 }
@@ -133,6 +125,7 @@ pub fn enemy(
             ..default()
         },
         transform,
+        ExternalImpulse::default(),
     )
 }
 

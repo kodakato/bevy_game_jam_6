@@ -36,8 +36,6 @@ impl Default for Explosion {
 pub struct ExplosionAssets {
     #[dependency]
     explosion: Handle<Image>,
-    #[dependency]
-    pub steps: Vec<Handle<AudioSource>>,
 }
 
 impl FromWorld for ExplosionAssets {
@@ -51,12 +49,6 @@ impl FromWorld for ExplosionAssets {
                     settings.sampler = ImageSampler::nearest();
                 },
             ),
-            steps: vec![
-                assets.load("audio/sound_effects/step1.ogg"),
-                assets.load("audio/sound_effects/step2.ogg"),
-                assets.load("audio/sound_effects/step3.ogg"),
-                assets.load("audio/sound_effects/step4.ogg"),
-            ],
         }
     }
 }

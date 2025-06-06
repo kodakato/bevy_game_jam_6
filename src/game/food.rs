@@ -3,7 +3,8 @@ use bevy::{
     prelude::*,
 };
 use bevy_rapier2d::prelude::{
-    Collider, ColliderMassProperties, Damping, LockedAxes, MassProperties, RigidBody, Velocity,
+    Collider, ColliderMassProperties, Damping, ExternalForce, ExternalImpulse, LockedAxes,
+    MassProperties, RigidBody, Velocity,
 };
 use rand::{Rng, thread_rng};
 
@@ -29,8 +30,6 @@ pub(super) fn plugin(app: &mut App) {
 pub struct FoodAssets {
     #[dependency]
     food: Handle<Image>,
-    #[dependency]
-    pub steps: Vec<Handle<AudioSource>>,
 }
 
 impl FromWorld for FoodAssets {
@@ -44,12 +43,6 @@ impl FromWorld for FoodAssets {
                     settings.sampler = ImageSampler::nearest();
                 },
             ),
-            steps: vec![
-                assets.load("audio/sound_effects/step1.ogg"),
-                assets.load("audio/sound_effects/step2.ogg"),
-                assets.load("audio/sound_effects/step3.ogg"),
-                assets.load("audio/sound_effects/step4.ogg"),
-            ],
         }
     }
 }
@@ -82,6 +75,7 @@ pub fn food(transform: Transform, food_assets: &FoodAssets) -> impl Bundle {
         LockedAxes::ROTATION_LOCKED,
         Collider::ball(15.0),
         Velocity::default(),
+        ExternalImpulse::default(),
         Sprite {
             image: food_assets.food.clone(),
             custom_size: Some(Vec2::new(30.0, 30.0)),
