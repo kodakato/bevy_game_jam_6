@@ -2,7 +2,9 @@ use bevy::{
     image::{ImageLoaderSettings, ImageSampler},
     prelude::*,
 };
-use bevy_rapier2d::prelude::{Collider, RigidBody, Velocity};
+use bevy_rapier2d::prelude::{
+    Collider, ColliderMassProperties, Damping, LockedAxes, MassProperties, RigidBody, Velocity,
+};
 use rand::{Rng, thread_rng};
 
 use crate::{AppSystems, PausableSystems, asset_tracking::LoadResource, screens::Screen};
@@ -36,7 +38,7 @@ impl FromWorld for FoodAssets {
         let assets = world.resource::<AssetServer>();
         Self {
             food: assets.load_with_settings(
-                "images/ducky.png",
+                "images/cupcake.png",
                 |settings: &mut ImageLoaderSettings| {
                     // Use `nearest` image sampling to preserve pixel art style.
                     settings.sampler = ImageSampler::nearest();
@@ -62,29 +64,27 @@ impl Default for Food {
     }
 }
 
-pub fn food(
-    transform: Transform,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
-    food_assets: &FoodAssets,
-) -> impl Bundle {
-    // A texture atlas is a way to split a single image into a grid of related images.
-    // You can learn more in this example: https://github.com/bevyengine/bevy/blob/latest/examples/2d/texture_atlas.rs
-    let layout = TextureAtlasLayout::from_grid(UVec2::splat(32), 6, 2, Some(UVec2::splat(1)), None);
-    let texture_atlas_layout = texture_atlas_layouts.add(layout);
+pub fn food(transform: Transform, food_assets: &FoodAssets) -> impl Bundle {
     debug!("Creating food");
     (
         Name::new("Food"),
         Food::default(),
         transform,
-        RigidBody::KinematicVelocityBased,
-        Collider::ball(1.0),
+        RigidBody::Dynamic,
+        Damping {
+            linear_damping: 1.0,
+            ..default()
+        },
+        ColliderMassProperties::MassProperties(MassProperties {
+            mass: 200.0,
+            ..default()
+        }),
+        LockedAxes::ROTATION_LOCKED,
+        Collider::ball(15.0),
         Velocity::default(),
         Sprite {
             image: food_assets.food.clone(),
-            texture_atlas: Some(TextureAtlas {
-                layout: texture_atlas_layout,
-                index: 0, //player_animation.get_atlas_index(),
-            }),
+            custom_size: Some(Vec2::new(30.0, 30.0)),
             ..default()
         },
     )

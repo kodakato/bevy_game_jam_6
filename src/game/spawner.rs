@@ -3,6 +3,7 @@ use bevy::{
     prelude::*,
 };
 use bevy_rapier2d::prelude::{Collider, RigidBody};
+use rand::Rng;
 
 use crate::{AppSystems, PausableSystems, asset_tracking::LoadResource, screens::Screen};
 
@@ -25,6 +26,8 @@ pub(super) fn plugin(app: &mut App) {
             .in_set(PausableSystems)
             .run_if(in_state(Screen::Gameplay)),
     );
+
+    app.add_systems(OnEnter(Screen::Gameplay), spawn_spawners);
 }
 
 #[derive(Resource, Asset, Clone, Reflect)]
@@ -41,7 +44,7 @@ impl FromWorld for SpawnerAssets {
         let assets = world.resource::<AssetServer>();
         Self {
             spawner: assets.load_with_settings(
-                "images/ducky.png",
+                "images/pipe.png",
                 |settings: &mut ImageLoaderSettings| {
                     // Use `nearest` image sampling to preserve pixel art style.
                     settings.sampler = ImageSampler::nearest();
@@ -93,11 +96,27 @@ pub fn spawner(
     )
 }
 
+pub const SPAWNER_AMOUNT: usize = 3;
+
+pub fn spawn_spawners(mut spawn_ew: EventWriter<SpawnEvent>) {
+    for _ in 0..SPAWNER_AMOUNT {
+        let x = rand::thread_rng().gen_range(-100.0..100.0);
+        let y = rand::thread_rng().gen_range(-100.0..100.0);
+
+        let transform = Transform::from_xyz(x, y, 0.0);
+
+        spawn_ew.write(SpawnEvent::Pipe {
+            position: transform,
+        });
+    }
+}
+
 #[derive(Event)]
 pub enum SpawnEvent {
     Enemy { position: Transform },
     Food { position: Transform },
     Explosion { position: Transform },
+    Pipe { position: Transform },
 }
 
 pub fn spawn_event_handler(
@@ -107,6 +126,7 @@ pub fn spawn_event_handler(
     enemy_assets: Res<EnemyAssets>,
     food_assets: Res<FoodAssets>,
     explosion_assets: Res<ExplosionAssets>,
+    spawner_assets: Res<SpawnerAssets>,
 ) {
     for event in event_reader.read() {
         match *event {
@@ -114,13 +134,20 @@ pub fn spawn_event_handler(
                 commands.spawn(enemy(position, &mut texture_atlas_layouts, &enemy_assets));
             }
             SpawnEvent::Food { position } => {
-                commands.spawn(food(position, &mut texture_atlas_layouts, &food_assets));
+                commands.spawn(food(position, &food_assets));
             }
             SpawnEvent::Explosion { position } => {
                 commands.spawn(explosion(
                     position,
                     &explosion_assets,
                     &mut texture_atlas_layouts,
+                ));
+            }
+            SpawnEvent::Pipe { position } => {
+                commands.spawn(spawner(
+                    position,
+                    &mut texture_atlas_layouts,
+                    &spawner_assets,
                 ));
             }
         }

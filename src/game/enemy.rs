@@ -255,10 +255,6 @@ pub fn start_explode(
     player_query: Query<&Transform, With<Player>>,
     mut commands: Commands,
 ) {
-    let Ok(player_transform) = player_query.single() else {
-        return;
-    };
-
     for (enemy_transform, enemy_entity) in enemy_query {
         // Check if near explosion
         for explosion_transform in explosion_query {
@@ -307,6 +303,9 @@ pub fn explode(
         if exploding.0.finished() {
             commands.entity(enemy_entity).despawn();
             spawn_ew.write(SpawnEvent::Enemy {
+                position: enemy_transform.clone(),
+            });
+            spawn_ew.write(SpawnEvent::Explosion {
                 position: enemy_transform.clone(),
             });
         }
