@@ -162,11 +162,7 @@ fn start_exploding_event_handler(
             continue;
         };
         velocity.linvel *= 0.5;
-        commands
-            .entity(event.entity)
-            .remove::<Hunting>()
-            .remove::<Hungry>()
-            .insert(Exploding::default());
+        commands.entity(event.entity).insert(Exploding::default());
     }
 }
 
@@ -176,9 +172,10 @@ pub const ENEMY_ACCELERATION: f32 = 500.0;
 pub fn run_to_player(
     time: Res<Time>,
     player_query: Query<&Transform, With<Player>>,
+
     mut enemy_query: Query<
         (&Transform, &mut Velocity, &Enemy),
-        (With<Enemy>, With<Hunting>, Without<Exploding>),
+        (With<Enemy>, Or<(With<Hunting>, With<Exploding>)>),
     >,
 ) {
     let Ok(player_transform) = player_query.single() else {
@@ -207,7 +204,15 @@ pub fn run_to_food(
     mut commands: Commands,
     time: Res<Time>,
     food_query: Query<(&Transform, &Food)>,
-    mut enemy_query: Query<(&Transform, &mut Velocity, Entity), (With<Enemy>, With<Hungry>)>,
+    mut enemy_query: Query<
+        (&Transform, &mut Velocity, Entity),
+        (
+            With<Enemy>,
+            With<Hungry>,
+            Without<Exploding>,
+            Without<Hunting>,
+        ),
+    >,
 ) {
     let delta = time.delta_secs();
 
@@ -316,7 +321,6 @@ pub fn eat(
             commands
                 .entity(enemy_ent)
                 .remove::<Eating>()
-                .remove::<Hungry>()
                 .insert(Hunting);
         }
     }
@@ -376,18 +380,24 @@ pub fn start_explode_near_player(
 }
 
 pub fn explode(
-    enemy_query: Query<(&Transform, Entity, &mut Exploding), With<Enemy>>,
+    enemy_query: Query<(&Transform, Entity, &mut Exploding, Option<&Hungry>), With<Enemy>>,
     mut commands: Commands,
     mut spawn_ew: EventWriter<SpawnEvent>,
     time: Res<Time>,
 ) {
-    for (enemy_transform, enemy_entity, mut exploding) in enemy_query {
+    for (enemy_transform, enemy_entity, mut exploding, hungry) in enemy_query {
         exploding.0.tick(time.delta());
 
         if exploding.0.finished() {
             commands.entity(enemy_entity).despawn();
+
+            let raw = hungry.map(|h| h.0).unwrap_or(0);
+            let clamped = raw.clamp(0, 5); // valid stomach range
+            let size = 50.0 + clamped as f32 * 12.0; // 50 → 110
+
             spawn_ew.write(SpawnEvent::Explosion {
                 position: enemy_transform.clone(),
+                size,
             });
         }
     }

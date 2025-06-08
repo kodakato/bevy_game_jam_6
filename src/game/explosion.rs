@@ -21,13 +21,28 @@ pub(super) fn plugin(app: &mut App) {
 
 pub const EXPLOSION_RADIUS: f32 = 70.0;
 
-#[derive(Component, Debug, Clone, PartialEq, Eq, Reflect)]
+#[derive(Component, Debug, Clone, PartialEq, Reflect)]
 #[reflect(Component)]
 pub struct Explosion(pub Timer);
 
 impl Default for Explosion {
     fn default() -> Self {
-        Self(Timer::from_seconds(0.2, TimerMode::Once))
+        Self::new(50.0)
+    }
+}
+
+impl Explosion {
+    pub fn new(size: f32) -> Self {
+        let radius = size.max(1.0); // safety
+
+        // Map size 50–110 to t in 0.0–1.0
+        let t = ((radius - 50.0) / 60.0).clamp(0.0, 1.0);
+        let duration = 0.05 + t * (0.4 - 0.05); // 0.05 → 0.4
+
+        debug!("Creating explosion with size {size}, duration {duration}");
+
+        let timer = Timer::from_seconds(duration, TimerMode::Once);
+        Self(timer)
     }
 }
 
@@ -54,15 +69,16 @@ impl FromWorld for ExplosionAssets {
 }
 
 pub fn explosion(
+    size: f32,
     transform: Transform,
     explosion_assets: &ExplosionAssets,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
 ) -> impl Bundle {
-    let layout = TextureAtlasLayout::from_grid(UVec2::splat(32), 6, 2, Some(UVec2::splat(1)), None);
+    let layout = TextureAtlasLayout::from_grid(UVec2::splat(32), 5, 1, None, None);
     let texture_atlas_layout = texture_atlas_layouts.add(layout);
     (
         Name::from("Explosion"),
-        Explosion::default(),
+        Explosion::new(size),
         Sprite {
             image: explosion_assets.explosion.clone(),
             texture_atlas: Some(TextureAtlas {
@@ -71,7 +87,7 @@ pub fn explosion(
             }),
             ..default()
         },
-        Collider::ball(EXPLOSION_RADIUS),
+        Collider::ball(size),
         transform,
     )
 }

@@ -105,7 +105,7 @@ pub fn spawn_spawners(mut spawn_ew: EventWriter<SpawnEvent>) {
 pub enum SpawnEvent {
     Enemy { position: Transform },
     Food { position: Transform },
-    Explosion { position: Transform },
+    Explosion { position: Transform, size: f32 },
     Pipe { position: Transform },
 }
 
@@ -126,8 +126,9 @@ pub fn spawn_event_handler(
             SpawnEvent::Food { position } => {
                 commands.spawn(food(position, &food_assets));
             }
-            SpawnEvent::Explosion { position } => {
+            SpawnEvent::Explosion { position, size } => {
                 commands.spawn(explosion(
+                    size,
                     position,
                     &explosion_assets,
                     &mut texture_atlas_layouts,
