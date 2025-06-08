@@ -84,7 +84,7 @@ pub fn cursor(cursor_assets: &CursorAssets) -> impl Bundle {
         Name::new("ursor"),
         Transform::from_xyz(-300.0, 0.0, 0.0),
         RigidBody::KinematicPositionBased,
-        Collider::ball(10.0),
+        Collider::ball(20.0),
         ColliderMassProperties::MassProperties(MassProperties {
             mass: 10.0,
             ..default()

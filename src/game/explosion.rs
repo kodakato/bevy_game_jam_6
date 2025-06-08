@@ -19,7 +19,7 @@ pub(super) fn plugin(app: &mut App) {
     );
 }
 
-pub const EXPLOSION_RADIUS: f32 = 30.0;
+pub const EXPLOSION_RADIUS: f32 = 70.0;
 
 #[derive(Component, Debug, Clone, PartialEq, Eq, Reflect)]
 #[reflect(Component)]

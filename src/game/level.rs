@@ -70,7 +70,7 @@ pub fn spawn_level(
         Visibility::default(),
         StateScoped(Screen::Gameplay),
         children![
-            player(400.0, &mut texture_atlas_layouts, &player_assets),
+            player(&mut texture_atlas_layouts, &player_assets),
             (
                 Name::new("Gameplay Music"),
                 music(level_assets.music.clone())

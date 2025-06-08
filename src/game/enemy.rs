@@ -6,8 +6,8 @@ use bevy::{
 };
 use bevy_rapier2d::{
     prelude::{
-        AdditionalMassProperties, Collider, ColliderMassProperties, Damping, ExternalForce,
-        ExternalImpulse, LockedAxes, MassProperties, RigidBody, Velocity,
+        ActiveEvents, AdditionalMassProperties, Collider, ColliderMassProperties, CollisionEvent,
+        Damping, ExternalForce, ExternalImpulse, LockedAxes, MassProperties, RigidBody, Velocity,
     },
     rapier::prelude::ColliderMassProps,
 };
@@ -25,6 +25,8 @@ pub(super) fn plugin(app: &mut App) {
     app.register_type::<EnemyAssets>();
     app.load_resource::<EnemyAssets>();
 
+    app.add_event::<StartExplodingEvent>();
+
     app.add_systems(
         Update,
         (
@@ -34,6 +36,8 @@ pub(super) fn plugin(app: &mut App) {
             start_explode,
             explode,
             start_explode_near_player,
+            start_exploding_event_handler,
+            tick_eat_cooldown,
         )
             .in_set(AppSystems::Update)
             .in_set(PausableSystems)
@@ -63,13 +67,27 @@ impl FromWorld for EnemyAssets {
     }
 }
 
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Default, Reflect)]
+#[derive(Component, Debug, Clone, Copy, PartialEq, Reflect)]
 #[reflect(Component)]
-pub struct Enemy;
+pub struct Enemy {
+    speed: f32,
+}
 
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Default, Reflect)]
+impl Default for Enemy {
+    fn default() -> Self {
+        Self { speed: 2.0 }
+    }
+}
+
+#[derive(Component, Debug, Clone, PartialEq, Eq, Reflect)]
 #[reflect(Component)]
-pub struct Hungry(usize);
+pub struct Hungry(usize, Timer);
+
+impl Default for Hungry {
+    fn default() -> Self {
+        Self(0, Timer::from_seconds(0.1, TimerMode::Once))
+    }
+}
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Reflect)]
 #[reflect(Component)]
@@ -85,7 +103,7 @@ pub struct Exploding(pub Timer);
 
 impl Default for Exploding {
     fn default() -> Self {
-        Self(Timer::from_seconds(2.0, TimerMode::Once))
+        Self(Timer::from_seconds(1.0, TimerMode::Once))
     }
 }
 
@@ -101,9 +119,8 @@ pub fn enemy(
     debug!("Creating enemy");
     (
         Name::new("Enemy"),
-        Enemy,
-        Hungry(0),
-        Transform::from_xyz(-50.0, 0.0, 0.0),
+        Enemy::default(),
+        Hungry::default(),
         RigidBody::Dynamic,
         LockedAxes::ROTATION_LOCKED,
         Collider::ball(10.0),
@@ -113,7 +130,7 @@ pub fn enemy(
             ..default()
         },
         ColliderMassProperties::MassProperties(MassProperties {
-            mass: 10.0,
+            mass: 100.0,
             ..default()
         }),
         Sprite {
@@ -126,17 +143,41 @@ pub fn enemy(
         },
         transform,
         ExternalImpulse::default(),
+        ActiveEvents::COLLISION_EVENTS,
     )
 }
 
-pub const ENEMY_MAX_SPEED: f32 = 100.0;
+#[derive(Event)]
+pub struct StartExplodingEvent {
+    entity: Entity,
+}
+
+fn start_exploding_event_handler(
+    mut start_exploding_er: EventReader<StartExplodingEvent>,
+    mut enemy_query: Query<&mut Velocity, With<Enemy>>,
+    mut commands: Commands,
+) {
+    for event in start_exploding_er.read() {
+        let Ok(mut velocity) = enemy_query.get_mut(event.entity) else {
+            continue;
+        };
+        velocity.linvel *= 0.5;
+        commands
+            .entity(event.entity)
+            .remove::<Hunting>()
+            .remove::<Hungry>()
+            .insert(Exploding::default());
+    }
+}
+
+pub const ENEMY_MAX_SPEED_BASE: f32 = 100.0;
 pub const ENEMY_ACCELERATION: f32 = 500.0;
 
 pub fn run_to_player(
     time: Res<Time>,
     player_query: Query<&Transform, With<Player>>,
     mut enemy_query: Query<
-        (&Transform, &mut Velocity),
+        (&Transform, &mut Velocity, &Enemy),
         (With<Enemy>, With<Hunting>, Without<Exploding>),
     >,
 ) {
@@ -147,14 +188,14 @@ pub fn run_to_player(
     let player_pos = player_transform.translation.truncate();
     let delta = time.delta_secs();
 
-    for (enemy_transform, mut velocity) in &mut enemy_query {
+    for (enemy_transform, mut velocity, enemy) in &mut enemy_query {
         let enemy_pos = enemy_transform.translation.truncate();
 
         // Direction to the player
         let direction = (player_pos - enemy_pos).normalize_or_zero();
 
         // Accelerate toward the player
-        let target_velocity = direction * ENEMY_MAX_SPEED;
+        let target_velocity = direction * ENEMY_MAX_SPEED_BASE * enemy.speed;
         let velocity_diff = target_velocity - velocity.linvel;
 
         let acceleration_step = velocity_diff.clamp_length_max(ENEMY_ACCELERATION * delta);
@@ -170,7 +211,6 @@ pub fn run_to_food(
 ) {
     let delta = time.delta_secs();
 
-    // Early exit if there's no food at all
     if food_query.is_empty() {
         return;
     }
@@ -182,7 +222,7 @@ pub fn run_to_food(
         let mut closest_food_pos = None;
         let mut closest_distance = f32::MAX;
 
-        for (food_transform, food) in &food_query {
+        for (food_transform, _) in &food_query {
             let food_pos = food_transform.translation.truncate();
             let dist = food_pos.distance(enemy_pos);
 
@@ -192,17 +232,11 @@ pub fn run_to_food(
             }
         }
 
-        // Check if can eat
-        if closest_distance < EAT_DISTANCE {
-            commands.entity(enemy_entity).insert(Eating);
-            continue;
-        }
-
         // Cant eat, go to nearest food
 
         if let Some(target_pos) = closest_food_pos {
             let direction = (target_pos - enemy_pos).normalize_or_zero();
-            let target_velocity = direction * ENEMY_MAX_SPEED;
+            let target_velocity = direction * ENEMY_MAX_SPEED_BASE;
             let velocity_diff = target_velocity - velocity.linvel;
             let acceleration_step = velocity_diff.clamp_length_max(ENEMY_ACCELERATION * delta);
             velocity.linvel += acceleration_step;
@@ -210,29 +244,77 @@ pub fn run_to_food(
     }
 }
 
-pub const EAT_DISTANCE: f32 = 20.0;
-pub const STOMACH_CAP: usize = 10;
+const STOMACH_CAP: usize = 5;
+const ENEMY_SPEED_DELTA: f32 = 5.0;
+const BOUNCE_FORCE: f32 = 30000.0;
 
 pub fn eat(
     mut commands: Commands,
-    enemy_query: Query<(&Transform, &mut Hungry, Entity), With<Enemy>>,
+    mut collision_events: EventReader<CollisionEvent>,
     mut food_query: Query<(&Transform, &mut Food)>,
+    mut enemy_query: Query<
+        (
+            Entity,
+            &Transform,
+            &mut Hungry,
+            &mut Enemy,
+            &mut ExternalImpulse,
+        ),
+        With<Enemy>,
+    >,
 ) {
-    for (enemy_transform, mut enemy_hungry, entity) in enemy_query {
-        for (food_transform, mut food) in &mut food_query {
-            let distance = enemy_transform
-                .translation
-                .distance(food_transform.translation);
-            if distance < EAT_DISTANCE {
-                food.0 -= 1;
-                enemy_hungry.0 += 1;
-            }
+    for event in collision_events.read() {
+        let CollisionEvent::Started(e1, e2, _) = *event else {
+            continue;
+        };
+
+        // Determine which entity is food and which is enemy
+        let (food_entity, enemy_entity) =
+            if food_query.get(e1).is_ok() && enemy_query.get(e2).is_ok() {
+                (e1, e2)
+            } else if food_query.get(e2).is_ok() && enemy_query.get(e1).is_ok() {
+                (e2, e1)
+            } else {
+                continue;
+            };
+
+        let Ok((food_transform, mut food)) = food_query.get_mut(food_entity) else {
+            continue;
+        };
+
+        let Ok((enemy_ent, enemy_transform, mut hungry, mut enemy, mut impulse)) =
+            enemy_query.get_mut(enemy_entity)
+        else {
+            continue;
+        };
+
+        // Only eat if there's food left
+        if food.0 == 0 {
+            continue;
         }
 
-        if enemy_hungry.0 >= STOMACH_CAP {
-            // Convert to hunting
+        if !hungry.1.finished() {
+            continue;
+        }
+
+        // Eat one unit of food
+        food.0 -= 1;
+        hungry.0 += 1;
+        enemy.speed += ENEMY_SPEED_DELTA;
+
+        hungry.1.reset();
+
+        // Bounce away from the food
+        let direction = (enemy_transform.translation - food_transform.translation)
+            .truncate()
+            .normalize_or_zero();
+        impulse.impulse += direction * BOUNCE_FORCE;
+
+        // Check if full
+        if hungry.0 >= STOMACH_CAP {
+            debug!("HUNTING");
             commands
-                .entity(entity)
+                .entity(enemy_ent)
                 .remove::<Eating>()
                 .remove::<Hungry>()
                 .insert(Hunting);
@@ -240,13 +322,18 @@ pub fn eat(
     }
 }
 
-pub const START_EXPLODING_DISTANCE: f32 = 40.0;
+fn tick_eat_cooldown(time: Res<Time>, mut enemy_query: Query<&mut Hungry>) {
+    for mut hungry in enemy_query {
+        hungry.1.tick(time.delta());
+    }
+}
+
+pub const START_EXPLODING_DISTANCE: f32 = 80.0;
 
 pub fn start_explode(
-    mut enemy_query: Query<(&Transform, Entity), (With<Enemy>, Without<Exploding>)>,
+    enemy_query: Query<(&Transform, Entity), (With<Enemy>, Without<Exploding>)>,
     explosion_query: Query<&Transform, With<Explosion>>,
-    player_query: Query<&Transform, With<Player>>,
-    mut commands: Commands,
+    mut start_exploding_ew: EventWriter<StartExplodingEvent>,
 ) {
     for (enemy_transform, enemy_entity) in enemy_query {
         // Check if near explosion
@@ -256,7 +343,9 @@ pub fn start_explode(
                 .distance(enemy_transform.translation)
                 < EXPLOSION_RADIUS
             {
-                commands.entity(enemy_entity).insert(Exploding::default());
+                start_exploding_ew.write(StartExplodingEvent {
+                    entity: enemy_entity,
+                });
             }
         }
     }
@@ -265,7 +354,7 @@ pub fn start_explode(
 pub fn start_explode_near_player(
     enemy_query: Query<(&Transform, Entity), (With<Enemy>, With<Hunting>, Without<Exploding>)>,
     player_query: Query<&Transform, With<Player>>,
-    mut commands: Commands,
+    mut start_exploding_ew: EventWriter<StartExplodingEvent>,
 ) {
     let Ok(player_transform) = player_query.single() else {
         return;
@@ -278,7 +367,9 @@ pub fn start_explode_near_player(
             .distance(player_transform.translation)
             < START_EXPLODING_DISTANCE
         {
-            commands.entity(enemy_entity).insert(Exploding::default());
+            start_exploding_ew.write(StartExplodingEvent {
+                entity: enemy_entity,
+            });
             continue;
         }
     }
@@ -295,9 +386,6 @@ pub fn explode(
 
         if exploding.0.finished() {
             commands.entity(enemy_entity).despawn();
-            spawn_ew.write(SpawnEvent::Enemy {
-                position: enemy_transform.clone(),
-            });
             spawn_ew.write(SpawnEvent::Explosion {
                 position: enemy_transform.clone(),
             });

@@ -53,7 +53,7 @@ pub struct Food(pub isize);
 
 impl Default for Food {
     fn default() -> Self {
-        Self(1)
+        Self(3)
     }
 }
 

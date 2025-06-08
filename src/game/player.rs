@@ -3,8 +3,8 @@ use bevy::{
     prelude::*,
 };
 use bevy_rapier2d::prelude::{
-    Collider, Damping, ExternalForce, ExternalImpulse, KinematicCharacterController, RigidBody,
-    Velocity,
+    Collider, Damping, ExternalForce, ExternalImpulse, KinematicCharacterController, LockedAxes,
+    RigidBody, Velocity,
 };
 
 use crate::{AppSystems, PausableSystems, asset_tracking::LoadResource};
@@ -50,7 +50,6 @@ impl FromWorld for PlayerAssets {
 pub struct Player;
 /// The player character.
 pub fn player(
-    max_speed: f32,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     player_assets: &PlayerAssets,
 ) -> impl Bundle {
@@ -62,8 +61,8 @@ pub fn player(
     (
         Name::new("Player"),
         Player,
-        Transform::from_xyz(-50.0, 0.0, 0.0),
-        RigidBody::KinematicVelocityBased,
+        Transform::from_xyz(0.0, 0.0, 0.0),
+        RigidBody::Dynamic,
         Collider::ball(20.0),
         Velocity::default(),
         Sprite {
@@ -74,6 +73,7 @@ pub fn player(
             }),
             ..default()
         },
+        LockedAxes::ROTATION_LOCKED,
     )
 }
 

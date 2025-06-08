@@ -21,7 +21,7 @@ pub(super) fn plugin(app: &mut App) {
 
     app.add_systems(
         Update,
-        spawn_event_handler
+        (spawn_event_handler, spawn_enemy)
             .in_set(AppSystems::Update)
             .in_set(PausableSystems)
             .run_if(in_state(Screen::Gameplay)),
@@ -42,7 +42,7 @@ impl FromWorld for SpawnerAssets {
         let assets = world.resource::<AssetServer>();
         Self {
             spawner: assets.load_with_settings(
-                "images/pipe.png",
+                "images/cave.png",
                 |settings: &mut ImageLoaderSettings| {
                     // Use `nearest` image sampling to preserve pixel art style.
                     settings.sampler = ImageSampler::nearest();
@@ -57,10 +57,11 @@ pub struct Spawner(pub Timer);
 
 impl Default for Spawner {
     fn default() -> Self {
-        Self(Timer::from_seconds(2.0, TimerMode::Repeating))
+        Self(Timer::from_seconds(5.0, TimerMode::Repeating))
     }
 }
 
+const SPAWNER_SIZE: f32 = 50.0;
 pub fn spawner(
     transform: Transform,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
@@ -75,14 +76,11 @@ pub fn spawner(
         Name::new("Spawner"),
         Spawner::default(),
         transform,
-        RigidBody::KinematicVelocityBased,
-        Collider::ball(1.0),
+        RigidBody::Fixed,
+        Collider::capsule_x(SPAWNER_SIZE / 3.2, SPAWNER_SIZE / 1.3),
         Sprite {
             image: spawner_assets.spawner.clone(),
-            texture_atlas: Some(TextureAtlas {
-                layout: texture_atlas_layout,
-                index: 0, //player_animation.get_atlas_index(),
-            }),
+            custom_size: Some(Vec2::new(SPAWNER_SIZE * 2.0, SPAWNER_SIZE * 1.8)),
             ..default()
         },
     )
@@ -92,8 +90,8 @@ pub const SPAWNER_AMOUNT: usize = 3;
 
 pub fn spawn_spawners(mut spawn_ew: EventWriter<SpawnEvent>) {
     for _ in 0..SPAWNER_AMOUNT {
-        let x = rand::thread_rng().gen_range(-100.0..100.0);
-        let y = rand::thread_rng().gen_range(-100.0..100.0);
+        let x = rand::thread_rng().gen_range(-1000.0..1000.0);
+        let y = rand::thread_rng().gen_range(-1000.0..1000.0);
 
         let transform = Transform::from_xyz(x, y, 0.0);
 
@@ -142,6 +140,21 @@ pub fn spawn_event_handler(
                     &spawner_assets,
                 ));
             }
+        }
+    }
+}
+
+fn spawn_enemy(
+    mut spawn_ew: EventWriter<SpawnEvent>,
+    spawner_query: Query<(&Transform, &mut Spawner)>,
+    time: Res<Time>,
+) {
+    for (spawner_transform, mut spawner) in spawner_query {
+        spawner.0.tick(time.delta());
+        if spawner.0.finished() {
+            let mut position = spawner_transform.clone();
+            position.translation.x -= SPAWNER_SIZE;
+            spawn_ew.write(SpawnEvent::Enemy { position });
         }
     }
 }
