@@ -68,7 +68,7 @@ pub struct Spawner(pub Timer, bool);
 
 impl Default for Spawner {
     fn default() -> Self {
-        Self(Timer::from_seconds(5.0, TimerMode::Repeating), false)
+        Self(Timer::from_seconds(10.0, TimerMode::Repeating), false)
     }
 }
 
@@ -113,6 +113,7 @@ pub fn spawner(
         },
         SpawnerHealth::default(),
         ActiveEvents::COLLISION_EVENTS,
+        StateScoped(Screen::Gameplay),
     )
 }
 

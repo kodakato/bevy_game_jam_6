@@ -19,6 +19,7 @@ tracing = { version = "0.1", features = [
 ] }
 bevy_rapier2d = "0.30.0"
 bevy_enoki = "0.4.0"
+bevy_embedded_assets = "0.13.0"
 
 # Your web builds will start failing if you add a dependency that pulls in `getrandom` v0.3+.
 # To fix this, you should tell `getrandom` to use the `wasm_js` backend on Wasm.

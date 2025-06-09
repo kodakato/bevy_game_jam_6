@@ -108,6 +108,7 @@ pub fn explosion(
         transform,
         Sensor,
         ActiveEvents::COLLISION_EVENTS,
+        StateScoped(Screen::Gameplay),
     )
 }
 

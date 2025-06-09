@@ -1,4 +1,3 @@
-## Level
 - Rock: https://opengameart.org/content/rock-pile
 - Glove: https://opengameart.org/content/boxing-gloves
 - Cupcake: https://opengameart.org/content/cupkek
@@ -6,3 +5,7 @@
 - explosion: https://opengameart.org/content/explosion-3
 - explosion(sfx): https://opengameart.org/content/synthesized-explosion
 - hits: https://opengameart.org/content/punch-slap-n-kick
+- swish: https://opengameart.org/content/swishes-sound-pack
+- boulder: https://opengameart.org/content/moving-boulder
+- hamster: https://www.megavoxels.com/learn/how-to-make-a-pixel-art-hamster/
+- title image: GenAi

@@ -7,20 +7,31 @@ use bevy_rapier2d::prelude::{
     KinematicCharacterController, LockedAxes, MassProperties, RigidBody, Velocity,
 };
 
-use crate::{AppSystems, PausableSystems, asset_tracking::LoadResource};
+use crate::{AppSystems, PausableSystems, asset_tracking::LoadResource, screens::Screen};
+
+use super::explosion::Explosion;
 
 pub(super) fn plugin(app: &mut App) {
     app.register_type::<Player>();
     app.register_type::<PlayerAssets>();
     app.load_resource::<PlayerAssets>();
 
+    app.init_resource::<PlayerHealth>();
+
     // Record directional input as movement controls.
     app.add_systems(
         Update,
-        player_movement_system
+        (
+            player_movement_system,
+            trigger_game_over,
+            damage_player_from_explosions,
+        )
             .in_set(AppSystems::RecordInput)
-            .in_set(PausableSystems),
+            .in_set(PausableSystems)
+            .run_if(in_state(Screen::Gameplay)),
     );
+
+    app.add_systems(OnEnter(Screen::Gameplay), reset_health);
 }
 
 #[derive(Resource, Asset, Clone, Reflect)]
@@ -79,7 +90,57 @@ pub fn player(
             mass: 100.0,
             ..default()
         }),
+        StateScoped(Screen::Gameplay),
     )
+}
+
+#[derive(Resource)]
+pub struct PlayerHealth(usize, Timer);
+
+impl Default for PlayerHealth {
+    fn default() -> Self {
+        Self(5, Timer::from_seconds(1.0, TimerMode::Once))
+    }
+}
+
+pub fn reset_health(mut health: ResMut<PlayerHealth>) {
+    *health = PlayerHealth::default();
+}
+
+fn trigger_game_over(health: Res<PlayerHealth>, mut next_screen: ResMut<NextState<Screen>>) {
+    if health.0 == 0 {
+        next_screen.set(Screen::GameOver);
+    }
+}
+
+pub fn damage_player_from_explosions(
+    mut health: ResMut<PlayerHealth>,
+    player_query: Query<&Transform, With<Player>>,
+    explosion_query: Query<(&Transform, &Explosion)>,
+    time: Res<Time>,
+) {
+    let Ok(player_transform) = player_query.single() else {
+        return;
+    };
+
+    let player_pos = player_transform.translation.truncate();
+    let player_radius = 20.0;
+
+    // Tick the cooldown timer
+    health.1.tick(time.delta());
+
+    for (explosion_transform, explosion) in &explosion_query {
+        let explosion_pos = explosion_transform.translation.truncate();
+        let explosion_radius = explosion.1;
+
+        let distance = player_pos.distance(explosion_pos);
+        if distance <= player_radius + explosion_radius && health.1.finished() && health.0 > 0 {
+            health.0 -= 1;
+            health.1.reset();
+            info!("Player hit by explosion! Health now: {}", health.0);
+            break;
+        }
+    }
 }
 
 pub const PLAYER_MAX_SPEED: f32 = 200.0;

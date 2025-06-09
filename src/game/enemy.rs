@@ -66,7 +66,7 @@ impl FromWorld for EnemyAssets {
         let assets = world.resource::<AssetServer>();
         Self {
             enemy: assets.load_with_settings(
-                "images/ducky.png",
+                "images/hamster.png",
                 |settings: &mut ImageLoaderSettings| {
                     // Use `nearest` image sampling to preserve pixel art style.
                     settings.sampler = ImageSampler::nearest();
@@ -130,10 +130,6 @@ pub fn enemy(
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     enemy_assets: &EnemyAssets,
 ) -> impl Bundle {
-    // A texture atlas is a way to split a single image into a grid of related images.
-    // You can learn more in this example: https://github.com/bevyengine/bevy/blob/latest/examples/2d/texture_atlas.rs
-    let layout = TextureAtlasLayout::from_grid(UVec2::splat(32), 6, 2, Some(UVec2::splat(1)), None);
-    let texture_atlas_layout = texture_atlas_layouts.add(layout);
     debug!("Creating enemy");
     (
         Name::new("Enemy"),
@@ -153,15 +149,13 @@ pub fn enemy(
         }),
         Sprite {
             image: enemy_assets.enemy.clone(),
-            texture_atlas: Some(TextureAtlas {
-                layout: texture_atlas_layout,
-                index: 0, //player_animation.get_atlas_index(),
-            }),
+            custom_size: Some(Vec2::splat(30.0)),
             ..default()
         },
         transform,
         ExternalImpulse::default(),
         ActiveEvents::COLLISION_EVENTS,
+        StateScoped(Screen::Gameplay),
     )
 }
 

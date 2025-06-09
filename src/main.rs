@@ -13,6 +13,7 @@ mod screens;
 mod theme;
 
 use bevy::{asset::AssetMetaCheck, prelude::*};
+use bevy_embedded_assets::PluginMode;
 
 fn main() -> AppExit {
     App::new().add_plugins(AppPlugin).run()
@@ -22,6 +23,9 @@ pub struct AppPlugin;
 
 impl Plugin for AppPlugin {
     fn build(&self, app: &mut App) {
+        app.add_plugins(bevy_embedded_assets::EmbeddedAssetPlugin {
+            mode: PluginMode::ReplaceDefault,
+        });
         // Add Bevy plugins.
         app.add_plugins(
             DefaultPlugins

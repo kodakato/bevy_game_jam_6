@@ -81,6 +81,7 @@ pub fn food(transform: Transform, food_assets: &FoodAssets) -> impl Bundle {
             custom_size: Some(Vec2::new(30.0, 30.0)),
             ..default()
         },
+        StateScoped(Screen::Gameplay),
     )
 }
 
