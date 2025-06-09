@@ -1,0 +1,32 @@
+(
+    spawn_rate: 0.0,
+    spawn_amount: 128,
+    emission_shape: Circle(100.0),
+    lifetime: (0.7, 1.0),
+    linear_speed: Some((14000.0, 0.6)),
+    linear_acceleration: Some((3000.0, 0.1)),
+    direction: None,
+    angular_speed: Some((120.0, 1.2)),
+    angular_acceleration: Some((0.0, 0.0)),
+    scale: Some((24.0, 0.9)),
+    gravity_direction: Some(((0.0, 0.0), 0.0)),
+    gravity_speed: Some((0.0, 0.0)),
+    linear_damp: Some((0.05, 0.05)),
+    angular_damp: Some((0.5, 0.5)),
+    scale_curve: Some((
+        points: [
+            (3.0, 0.0, None),
+            (0.6, 0.5, None),
+            (0.0, 1.0, None),
+        ]
+    )),
+    color_curve: Some((
+        points: [
+            ((red:1.0, green:1.0, blue:1.0, alpha:1.0), 0.0, None),
+            ((red:1.0, green:0.4, blue:0.0, alpha:0.6), 0.3, None),
+            ((red:0.2, green:0.0, blue:0.0, alpha:0.2), 0.6, None),
+            ((red:0.0, green:0.0, blue:0.0, alpha:0.0), 1.0, None),
+        ]
+    ))
+)
+

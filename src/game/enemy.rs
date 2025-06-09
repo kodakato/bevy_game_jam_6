@@ -11,8 +11,14 @@ use bevy_rapier2d::{
     },
     rapier::prelude::ColliderMassProps,
 };
+use rand::{Rng, seq::SliceRandom};
 
-use crate::{AppSystems, PausableSystems, asset_tracking::LoadResource, screens::Screen};
+use crate::{
+    AppSystems, PausableSystems,
+    asset_tracking::LoadResource,
+    audio::{persistent_sound_effect, sound_effect},
+    screens::Screen,
+};
 
 use super::{
     explosion::{EXPLOSION_RADIUS, Explosion, ExplosionAssets, explosion},
@@ -38,6 +44,7 @@ pub(super) fn plugin(app: &mut App) {
             start_explode_near_player,
             start_exploding_event_handler,
             tick_eat_cooldown,
+            shake_when_explode,
         )
             .in_set(AppSystems::Update)
             .in_set(PausableSystems)
@@ -50,6 +57,8 @@ pub(super) fn plugin(app: &mut App) {
 pub struct EnemyAssets {
     #[dependency]
     enemy: Handle<Image>,
+    #[dependency]
+    exploding: Vec<Handle<AudioSource>>,
 }
 
 impl FromWorld for EnemyAssets {
@@ -63,6 +72,13 @@ impl FromWorld for EnemyAssets {
                     settings.sampler = ImageSampler::nearest();
                 },
             ),
+            exploding: vec![
+                assets.load("audio/sound_effects/exploding.ogg"),
+                assets.load("audio/sound_effects/exploding1.ogg"),
+                assets.load("audio/sound_effects/exploding2.ogg"),
+                assets.load("audio/sound_effects/exploding3.ogg"),
+                assets.load("audio/sound_effects/exploding4.ogg"),
+            ],
         }
     }
 }
@@ -103,7 +119,9 @@ pub struct Exploding(pub Timer);
 
 impl Default for Exploding {
     fn default() -> Self {
-        Self(Timer::from_seconds(1.0, TimerMode::Once))
+        let mut rng = rand::thread_rng();
+        let duration = rng.gen_range(0.8..=1.4);
+        Self(Timer::from_seconds(duration, TimerMode::Once))
     }
 }
 
@@ -156,14 +174,24 @@ fn start_exploding_event_handler(
     mut start_exploding_er: EventReader<StartExplodingEvent>,
     mut enemy_query: Query<&mut Velocity, With<Enemy>>,
     mut commands: Commands,
+    enemy_assets: Res<EnemyAssets>,
 ) {
     for event in start_exploding_er.read() {
         let Ok(mut velocity) = enemy_query.get_mut(event.entity) else {
             continue;
         };
         velocity.linvel *= 0.5;
-        commands.entity(event.entity).insert(Exploding::default());
+        commands
+            .entity(event.entity)
+            .insert(Exploding::default())
+            .insert(exploding_sound(&enemy_assets));
     }
+}
+
+pub fn exploding_sound(explosion_assets: &EnemyAssets) -> impl Bundle {
+    let rng = &mut rand::thread_rng();
+    let random_punch = explosion_assets.exploding.choose(rng).unwrap().clone();
+    persistent_sound_effect(random_punch)
 }
 
 pub const ENEMY_MAX_SPEED_BASE: f32 = 100.0;
@@ -175,7 +203,7 @@ pub fn run_to_player(
 
     mut enemy_query: Query<
         (&Transform, &mut Velocity, &Enemy),
-        (With<Enemy>, Or<(With<Hunting>, With<Exploding>)>),
+        (With<Enemy>, With<Hunting>, Without<Exploding>),
     >,
 ) {
     let Ok(player_transform) = player_query.single() else {
@@ -336,16 +364,16 @@ pub const START_EXPLODING_DISTANCE: f32 = 80.0;
 
 pub fn start_explode(
     enemy_query: Query<(&Transform, Entity), (With<Enemy>, Without<Exploding>)>,
-    explosion_query: Query<&Transform, With<Explosion>>,
+    explosion_query: Query<(&Transform, &Explosion)>,
     mut start_exploding_ew: EventWriter<StartExplodingEvent>,
 ) {
     for (enemy_transform, enemy_entity) in enemy_query {
         // Check if near explosion
-        for explosion_transform in explosion_query {
+        for (explosion_transform, explosion) in explosion_query {
             if explosion_transform
                 .translation
                 .distance(enemy_transform.translation)
-                < EXPLOSION_RADIUS
+                < explosion.1
             {
                 start_exploding_ew.write(StartExplodingEvent {
                     entity: enemy_entity,
@@ -393,12 +421,25 @@ pub fn explode(
 
             let raw = hungry.map(|h| h.0).unwrap_or(0);
             let clamped = raw.clamp(0, 5); // valid stomach range
-            let size = 50.0 + clamped as f32 * 12.0; // 50 → 110
+            let size = 70.0 + clamped as f32 * 12.0; // 50 → 110
 
             spawn_ew.write(SpawnEvent::Explosion {
                 position: enemy_transform.clone(),
                 size,
             });
         }
+    }
+}
+
+const SHAKE_INTENSITY: f32 = 4.0;
+
+pub fn shake_when_explode(mut query: Query<&mut Transform, (With<Enemy>, With<Exploding>)>) {
+    let mut rng = rand::thread_rng();
+
+    for mut transform in &mut query {
+        let offset_x = rng.gen_range(-SHAKE_INTENSITY..SHAKE_INTENSITY);
+        let offset_y = rng.gen_range(-SHAKE_INTENSITY..SHAKE_INTENSITY);
+        transform.translation.x += offset_x;
+        transform.translation.y += offset_y;
     }
 }

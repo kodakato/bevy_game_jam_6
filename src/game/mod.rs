@@ -6,6 +6,7 @@ mod enemy;
 mod explosion;
 mod food;
 pub mod level;
+mod particles;
 mod physics;
 mod player;
 mod spawner;
@@ -17,6 +18,7 @@ pub(super) fn plugin(app: &mut App) {
         level::plugin,
         cursor::plugin,
         physics::plugin,
+        particles::plugin,
         explosion::plugin,
         enemy::plugin,
         food::plugin,

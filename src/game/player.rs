@@ -3,8 +3,8 @@ use bevy::{
     prelude::*,
 };
 use bevy_rapier2d::prelude::{
-    Collider, Damping, ExternalForce, ExternalImpulse, KinematicCharacterController, LockedAxes,
-    RigidBody, Velocity,
+    Collider, ColliderMassProperties, Damping, ExternalForce, ExternalImpulse,
+    KinematicCharacterController, LockedAxes, MassProperties, RigidBody, Velocity,
 };
 
 use crate::{AppSystems, PausableSystems, asset_tracking::LoadResource};
@@ -74,6 +74,11 @@ pub fn player(
             ..default()
         },
         LockedAxes::ROTATION_LOCKED,
+        ExternalImpulse::default(),
+        ColliderMassProperties::MassProperties(MassProperties {
+            mass: 100.0,
+            ..default()
+        }),
     )
 }
 

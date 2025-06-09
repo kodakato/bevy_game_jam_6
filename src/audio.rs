@@ -36,6 +36,10 @@ pub fn sound_effect(handle: Handle<AudioSource>) -> impl Bundle {
     (AudioPlayer(handle), PlaybackSettings::DESPAWN, SoundEffect)
 }
 
+pub fn persistent_sound_effect(handle: Handle<AudioSource>) -> impl Bundle {
+    (AudioPlayer(handle), PlaybackSettings::ONCE, SoundEffect)
+}
+
 /// [`GlobalVolume`] doesn't apply to already-running audio entities, so this system will update them.
 fn apply_global_volume(
     global_volume: Res<GlobalVolume>,
